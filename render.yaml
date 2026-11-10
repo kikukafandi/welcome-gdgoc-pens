@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: welcome-gdgoc-pens
+    runtime: node
+    region: singapore
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    envVars:
+      - key: HOST_KEY
+        sync: false

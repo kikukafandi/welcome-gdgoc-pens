@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="only light"> <!-- mencegah mode gelap otomatis browser HP menghitamkan layar tap -->
+<title>Welcome GDGoC PENS Gen 8</title>
+<link rel="icon" href="data:,">
+<style>
+@font-face { font-family:"Google Sans Flex"; src:url(/font.woff2) format("woff2"); font-weight:400 700; font-display:swap; }
+@font-face { font-family:"Bagel Fat One"; src:url(/bagel.woff2) format("woff2"); font-display:swap; }
+:root { color-scheme:only light; --bg:#0D0F15; --spot:#272C3E; --ink:#F5F6F8; --mute:#A2A9BA; --edge:clamp(16px, 4vmin, 48px); --full:min(60dvh, 125vw); }
+* { box-sizing:border-box; margin:0; }
+html, body { height:100%; overflow:hidden; }
+body { background:radial-gradient(70vmax 60vmax at 50% 46%, var(--spot), var(--bg) 72%); color:var(--ink); font-family:"Google Sans Flex", system-ui, sans-serif; font-weight:500; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+
+#stage { position:fixed; inset:0; --p:0; }
+#sky { position:absolute; inset:0; background:#F3F6FC; opacity:0; transition:opacity .6s; }
+#sky::before, #sky::after { content:""; position:absolute; inset:0; transition:opacity .2s; }
+#sky::before { opacity:calc(.12 + var(--p) * .88); background:radial-gradient(62vmax 52vmax at 0 0, #4285F4b0, transparent), radial-gradient(62vmax 52vmax at 100% 0, #EA4335a0, transparent), radial-gradient(62vmax 52vmax at 100% 100%, #FBBC04c0, transparent), radial-gradient(62vmax 52vmax at 0 100%, #34A853a8, transparent); }
+#sky::after { opacity:calc(.35 + var(--p) * .65); background:radial-gradient(70vmin 70vmin at 50% 50%, #fff, #ffffff00); }
+.phone #sky, [data-phase=play] #sky { opacity:1; }
+.phone #stage, [data-phase=play] #stage { color:#1B1F2A; }
+#brand { position:absolute; left:var(--edge); top:var(--edge); font-size:clamp(17px, 2.8vmin, 32px); line-height:1; }
+
+/* Ukuran balon dihitung dari tinggi layar, jadi proporsinya sama di HP dan proyektor */
+#grow { position:absolute; left:0; right:0; bottom:17dvh; margin:auto; height:var(--full); aspect-ratio:400/560; transform:scale(.3); transform-origin:50% 100%; transition:transform .22s cubic-bezier(.2,1.25,.4,1); will-change:transform; }
+#float { position:absolute; inset:0; }
+#float svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+.tense #float { animation:shake .09s linear infinite; }
+@keyframes shake {
+  25% { transform:translate(var(--a), calc(var(--a) * -.5)); }
+  75% { transform:translate(calc(var(--a) * -1), calc(var(--a) * .5)); }
+}
+#pool { position:absolute; left:50%; bottom:calc(17dvh - 4vmin); width:calc(var(--full) * .9); height:8vmin; margin-left:calc(var(--full) * -.45); background:radial-gradient(closest-side, #1B1F2A, transparent); opacity:calc(.1 + var(--p) * .16); transition:opacity .2s; }
+
+#hud { position:absolute; left:0; right:0; bottom:0; padding:0 var(--edge) calc(var(--edge) * .8); }
+#row { display:flex; justify-content:space-between; align-items:baseline; gap:1em; }
+#hint { font-size:clamp(20px, 3.8vmin, 46px); line-height:1.15; }
+#pct { font-size:clamp(34px, 7.4vmin, 88px); font-weight:600; line-height:1; white-space:nowrap; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+#bar { height:6px; margin-top:clamp(10px, 2vmin, 20px); background:#1B1F2A1f; }
+#fill { height:100%; background:linear-gradient(90deg, #4285F4 25%, #EA4335 25% 50%, #FBBC04 50% 75%, #34A853 75%); clip-path:inset(0 calc(100% - var(--p) * 100%) 0 0); transition:clip-path .2s; }
+
+#tap { position:fixed; inset:0; z-index:2; width:100%; height:100%; padding:0; border:0; background:none; cursor:pointer; touch-action:none; -webkit-tap-highlight-color:transparent; }
+#tap:focus-visible { outline:3px solid #1B1F2A; outline-offset:-8px; }
+[data-phase=lobby] #tap { cursor:default; }
+
+/* Layar proyektor */
+.screen #tap { display:none; }
+#lobby { display:none; position:absolute; inset:0; grid-template-columns:auto minmax(0,1fr); grid-template-rows:minmax(0,1fr); gap:clamp(24px, 5vw, 96px); align-items:center; padding:calc(var(--edge) * 2.2) var(--edge) var(--edge); }
+.screen[data-phase=lobby] #lobby { display:grid; }
+.screen[data-phase=lobby] #grow, .screen[data-phase=lobby] #hud, .screen[data-phase=lobby] #pool { display:none; }
+#join { display:grid; gap:clamp(10px, 2.2vh, 24px); justify-items:start; }
+#lobby h2 { font-size:min(8.6vh, 5vw); font-weight:600; line-height:1.05; letter-spacing:-.02em; }
+#qr { width:min(64vh, 42vw); aspect-ratio:1; background:#fff; border-radius:12px; overflow:hidden; }
+#qr svg { display:block; width:100%; height:100%; }
+#url { font-size:clamp(16px, 2.8vmin, 32px); line-height:1.25; overflow-wrap:anywhere; color:var(--mute); }
+#crew { align-self:stretch; min-width:0; min-height:0; display:grid; grid-template-rows:minmax(0,1fr) auto; }
+#bouquet { display:block; width:100%; height:100%; overflow:visible; transform-origin:50% 100%; animation:sway 7s ease-in-out infinite alternate; }
+@keyframes sway { from { transform:rotate(-1.4deg); } to { transform:rotate(1.4deg); } }
+.mini { transform-box:fill-box; transform-origin:50% 100%; animation:join .55s cubic-bezier(.2,1.5,.4,1) both; }
+@keyframes join { from { transform:scale(0); } }
+#strings path { fill:none; stroke:#ffffff38; stroke-width:1.5; }
+#tally { display:flex; justify-content:space-between; align-items:baseline; gap:1em; padding-top:clamp(8px, 1.6vh, 18px); }
+#people { font-size:clamp(20px, 3.8vmin, 44px); line-height:1.1; color:var(--mute); }
+#count { font-size:2.4em; font-weight:600; letter-spacing:-.02em; color:var(--ink); font-variant-numeric:tabular-nums; }
+#start { padding:.1em 0; border:0; background:none; color:var(--ink); font:inherit; font-size:min(8.6vh, 5vw); font-weight:600; letter-spacing:-.02em; line-height:1.1; cursor:pointer; text-decoration:underline; text-decoration-thickness:.06em; text-underline-offset:.16em; }
+#start:hover { color:#FBBC04; }
+.badkey #qr, .badkey #url, .badkey #crew { display:none; }
+#start:focus-visible, #sound:focus-visible { outline:3px solid #fff; outline-offset:4px; }
+@media (max-aspect-ratio: 1/1) {
+  #lobby { grid-template-columns:minmax(0,1fr); grid-template-rows:auto minmax(0,1fr); justify-items:center; }
+  #qr { width:min(46vh, 76vw); }
+}
+
+#sound { display:none; position:fixed; z-index:5; right:calc(var(--edge) - 12px); top:calc(var(--edge) - 12px); align-items:center; gap:.5em; padding:12px; border:0; background:none; color:var(--ink); font:inherit; font-size:clamp(17px, 2.8vmin, 32px); line-height:1; cursor:pointer; }
+.screen #sound { display:flex; }
+#sound svg { width:1.3em; height:1.3em; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+#sound .slash, #sound .waves { transition:opacity .15s; }
+#sound .slash { opacity:0; }
+#sound.off { color:#FBBC04; }
+[data-phase=play] #sound { color:#1B1F2A; }
+[data-phase=play] #sound.off { color:#A85200; }
+#sound.off .slash { opacity:1; }
+#sound.off .waves { opacity:0; }
+#sound span:empty { display:none; }
+
+#ribbons { position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:1; }
+#flash { position:fixed; inset:0; background:#fff; opacity:0; pointer-events:none; z-index:4; }
+
+/* Setelah balon meletus */
+body.popped { background:radial-gradient(120% 95% at 50% 42%, #4031B0, #1C1566 52%, #0E0A3C); }
+#rays { display:none; position:fixed; left:50%; top:50%; width:220vmax; height:220vmax; margin:-110vmax 0 0 -110vmax; background:repeating-conic-gradient(#ffffff17 0 9deg, transparent 9deg 18deg); -webkit-mask:radial-gradient(closest-side, #000 15%, transparent 62%); mask:radial-gradient(closest-side, #000 15%, transparent 62%); animation:spin 70s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+#msg { display:none; position:fixed; inset:0; z-index:2; align-content:center; justify-items:center; font-family:"Bagel Fat One", ui-rounded, system-ui, sans-serif; font-weight:400; text-align:center; line-height:1.02; outline:0; overflow:hidden; pointer-events:none; }
+.popped #stage, .popped #tap { display:none; }
+.popped #msg { display:grid; }
+.popped #rays { display:block; }
+#msg > span { white-space:nowrap; }
+#l1 { font-size:min(7.4vw, 11vh); }
+#l2 { font-size:min(13.5vw, 19vh); color:#FFE9A8; text-shadow:0 .06em 0 #6A3FD0; }
+#l3 { font-size:min(27vw, 42vh); line-height:1.05; }
+#msg i { display:inline-block; font-style:normal; animation:rise .55s cubic-bezier(.2,1.6,.4,1) both; }
+#l3 i { position:relative; padding:0 .04em; background:linear-gradient(155deg, var(--hi) 10%, var(--c) 36%, var(--lo) 58%, var(--hi) 80%, var(--c)); -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-stroke:.012em #ffffff90; filter:drop-shadow(0 .035em 0 var(--lo)) drop-shadow(0 .1em .12em #06032a88); animation:inflate .8s both, bob 3.4s ease-in-out infinite alternate; animation-delay:var(--d), calc(var(--d) + .8s); }
+#l3 i::after { content:""; position:absolute; left:50%; top:86%; width:2px; height:60vh; background:#ffffff80; }
+@keyframes rise { from { opacity:0; transform:translateY(70%) rotate(var(--r)) scale(.4); } }
+@keyframes inflate {
+  0% { opacity:0; transform:scale(.06, .1) rotate(var(--r)); }
+  55% { opacity:1; transform:scale(1.14, 1.08); }
+  78% { transform:scale(.95, .98); }
+  100% { transform:none; }
+}
+@keyframes bob { to { transform:translateY(-.035em) rotate(var(--t)); } }
+
+@media (prefers-reduced-motion: reduce) {
+  #grow, #fill, #sky, #sky::before, #sky::after, #pool { transition:none; }
+  .tense #float, #rays, #msg i, #l3 i, #bouquet, .mini { animation:none; }
+}
+</style>
+</head>
+<body data-phase="lobby">
+<main id="stage">
+  <div id="sky"></div>
+  <p id="brand">GDGoC PENS</p>
+  <div id="pool"></div>
+  <div id="grow">
+    <div id="float">
+      <svg viewBox="0 0 400 560" aria-hidden="true">
+        <defs>
+          <clipPath id="skin"><path d="M200 20C310 20 380 110 380 205 380 320 270 410 200 440 130 410 20 320 20 205 20 110 90 20 200 20Z"/></clipPath>
+          <radialGradient id="rim" cx=".42" cy=".36" r=".74"><stop offset=".55" stop-color="#1B1F2A" stop-opacity="0"/><stop offset="1" stop-color="#1B1F2A" stop-opacity=".38"/></radialGradient>
+          <radialGradient id="sheen" cx=".3" cy=".22" r=".52"><stop offset="0" stop-color="#fff" stop-opacity=".62"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+        </defs>
+        <path d="M200 450C186 486 214 514 200 560" fill="none" stroke="#1B1F2A" stroke-opacity=".55" stroke-width="2.5"/>
+        <path id="knot" d="M200 434 182 466C194 460 206 460 218 466Z" fill="#B3261E"/>
+        <g clip-path="url(#skin)">
+          <path fill="#4285F4" d="M200 20C110 120 110 320 200 440L0 440V0Z"/>
+          <path fill="#EA4335" d="M200 20C110 120 110 320 200 440Z"/>
+          <path fill="#FBBC04" d="M200 20C290 120 290 320 200 440Z"/>
+          <path fill="#34A853" d="M200 20C290 120 290 320 200 440L400 440V0Z"/>
+          <rect width="400" height="450" fill="url(#rim)"/>
+          <rect width="400" height="450" fill="url(#sheen)"/>
+        </g>
+        <path d="M78 176C88 116 124 78 170 62" fill="none" stroke="#fff" stroke-width="17" stroke-linecap="round" opacity=".85"/>
+        <circle cx="72" cy="216" r="9" fill="#fff" opacity=".85"/>
+      </svg>
+    </div>
+  </div>
+  <div id="hud">
+    <div id="row"><p id="hint"></p><p id="pct">0%</p></div>
+    <div id="bar"><div id="fill"></div></div>
+  </div>
+  <section id="lobby">
+    <div id="join">
+      <h2>Scan untuk ikut</h2>
+      <div id="qr" role="img" aria-label="QR code untuk masuk"></div>
+      <p id="url"></p>
+    </div>
+    <div id="crew">
+      <svg id="bouquet" viewBox="0 0 800 860" aria-hidden="true"><g id="strings"></g><g id="minis"></g></svg>
+      <div id="tally">
+        <p id="people"><span id="count">0</span> orang sudah masuk</p>
+        <button id="start">Mulai</button>
+      </div>
+    </div>
+  </section>
+</main>
+<button id="tap" aria-label="Tiup balon"></button>
+<button id="sound" class="off" aria-label="Musik">
+  <span id="soundText">Klik untuk menyalakan musik</span>
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4Z"/>
+    <path class="waves" d="M15.5 9a4 4 0 0 1 0 6M18.2 6.5a8 8 0 0 1 0 11"/>
+    <path class="slash" d="m16 9.5 5 5m0-5-5 5"/>
+  </svg>
+</button>
+
+<div id="rays" aria-hidden="true"></div>
+<h1 id="msg" tabindex="-1" aria-label="Welcome new core team GDGoC PENS GEN 8">
+  <span id="l1" aria-hidden="true"></span>
+  <span id="l2" aria-hidden="true"></span>
+  <span id="l3" aria-hidden="true"></span>
+</h1>
+<canvas id="ribbons" aria-hidden="true"></canvas>
+<div id="flash"></div>
+
+<script>
+const COLORS = ['#4285F4', '#EA4335', '#FBBC04', '#34A853'];
+const LIGHT = ['#A8C7FA', '#F6AEA9', '#FDE293', '#A8DAB5']; // sisi belakang pita
+const FOIL = [['#BCD4FF', '#4285F4', '#174EA6'], ['#FFC4BE', '#EA4335', '#A50E0E'], ['#FFF0B3', '#FBBC04', '#B06000'], ['#BDEBC9', '#34A853', '#0D652D']];
+const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = id => document.getElementById(id);
+const rand = (a, b) => a + Math.random() * (b - a);
+
+const isScreen = location.pathname === '/screen';
+const hostKey = new URLSearchParams(location.search).get('key');
+document.body.classList.add(isScreen ? 'screen' : 'phone');
+
+const HINTS = isScreen
+  ? { lobby:'', play:'Tap layar HP kalian', near:'Sedikit lagi' }
+  : { lobby:'Kamu sudah masuk, tunggu aba-aba', play:'Tap layar terus', near:'Sedikit lagi' };
+$('hint').textContent = HINTS.lobby;
+
+let ws, game = { phase:'lobby' }, myColor = 0, progress = 0, started = false, popped = false, timers = [], W, H;
+
+// Sambungan ke server, otomatis menyambung lagi kalau sinyal putus
+function connect() {
+  const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
+  const q = isScreen ? `?key=${encodeURIComponent(hostKey ?? '')}` : '';
+  ws = new WebSocket(`${scheme}://${location.host}/ws${q}`);
+  ws.onmessage = e => {
+    const m = JSON.parse(e.data);
+    if ('color' in m) myColor = m.color; else render(m);
+  };
+  ws.onclose = e => {
+    if (e.code === 1008) { // kunci host salah, tidak perlu mencoba menyambung lagi
+      document.body.classList.add('badkey');
+      document.querySelector('#lobby h2').textContent = 'Kunci host salah, periksa link-nya';
+      return;
+    }
+    if (!popped) $('hint').textContent = 'Menyambung lagi';
+    setTimeout(connect, 1000);
+  };
+}
+
+// Reset di tempat, tanpa reload, supaya musik di proyektor tetap menyala
+function resetView() {
+  started = popped = false;
+  timers.forEach(clearTimeout);
+  timers = [];
+  ribbons = []; puffs = []; rings = []; ring = null;
+  document.body.classList.remove('popped');
+  if (actx) { music.newBus(); music.step = 0; music.next = actx.currentTime + .08; }
+}
+
+function render(s) {
+  if (s.phase === 'lobby' && started) resetView();
+  game = s;
+  if (s.phase !== 'lobby') started = true;
+  document.body.dataset.phase = s.phase;
+  progress = s.target ? Math.min(s.taps / s.target, 1) : 0;
+  if (isScreen) { $('count').textContent = s.players; crowd(s.players); music.update(s.phase, progress); }
+  if (s.phase === 'done') return pop();
+
+  const stage = $('stage');
+  $('grow').style.transform = `scale(${.3 + .7 * progress})`;
+  stage.style.setProperty('--p', progress);
+  $('pct').textContent = s.phase === 'lobby' ? `${s.players} orang` : Math.floor(progress * 100) + '%';
+  $('hint').textContent = progress > .85 ? HINTS.near : HINTS[s.phase];
+  stage.classList.toggle('tense', progress > .7);
+  stage.style.setProperty('--a', Math.max(progress - .7, 0) * 12 + 'px');
+  if (isScreen && !calm) s.delta.forEach((n, c) => {
+    for (let i = 0; i < Math.min(n, 5); i++) puff(rand(W * .1, W * .9), H, c);
+  });
+}
+
+// Layar scan, setiap orang yang masuk menambah satu balon ke buket
+function crowd(n) {
+  const minis = $('minis'), strings = $('strings'), want = Math.min(n, 80);
+  for (let i = minis.children.length; i < want; i++) {
+    const r = 36 * Math.sqrt(i + .5), a = i * 2.39996; // susunan spiral supaya balon menyebar rata
+    const x = 400 + r * Math.cos(a), y = 330 + r * Math.sin(a);
+    strings.insertAdjacentHTML('beforeend', `<path d="M${x} ${y + 44}Q${x * .6 + 160} ${(y + 894) / 2} 400 850"/>`);
+    minis.insertAdjacentHTML('beforeend', `<g transform="translate(${x} ${y})"><g class="mini" style="color:${COLORS[(i * 2654435761 >>> 28) % 4]}"><path fill="currentColor" d="M0-42C24-42 38-24 38-4 38 20 14 38 0 44-14 38-38 20-38-4-38-24-24-42 0-42Z"/><ellipse cx="-14" cy="-20" rx="6" ry="12" fill="#fff" opacity=".55" transform="rotate(26 -14 -20)"/></g></g>`);
+  }
+  while (minis.children.length > want) { minis.lastChild.remove(); strings.lastChild.remove(); }
+}
+
+function tap(e) {
+  if (game.phase !== 'play' || ws.readyState !== WebSocket.OPEN) return;
+  ws.send('t');
+  navigator.vibrate?.(12);
+  if (!calm && rings.length < 24) rings.push({ x:e.clientX || W / 2, y:e.clientY || H / 2, r:12, a:.75, c:COLORS[myColor] });
+}
+$('tap').addEventListener('pointerdown', tap); // pointerdown, bukan click, supaya jeda tap sekecil mungkin
+$('tap').addEventListener('click', e => { if (e.detail === 0) tap(e); }); // Enter, Space, screen reader
+
+// Kontrol host di layar proyektor
+if (isScreen) {
+  $('start').addEventListener('click', () => ws.send('start'));
+  $('sound').addEventListener('click', e => {
+    e.currentTarget.blur(); // supaya Space berikutnya memulai acara, bukan mematikan musik
+    if (actx?.state === 'running') music.mute(!music.muted); else music.begin();
+  });
+  // Ikon speaker mengurus dirinya sendiri, kalau ikut di sini satu klik menyalakan lalu langsung mematikan
+  for (const type of ['pointerup', 'click', 'keydown']) addEventListener(type, e => { if (!e.target.closest?.('#sound')) music.begin(); });
+  addEventListener('keydown', e => {
+    if (e.repeat || ws.readyState !== WebSocket.OPEN) return;
+    if (e.key === ' ' || e.key === 'Enter') ws.send('start');
+    if (e.key.toLowerCase() === 'p') ws.send('pop');
+    if (e.key.toLowerCase() === 'r') ws.send('reset');
+  });
+  fetch('/join').then(r => r.json()).then(j => {
+    $('qr').innerHTML = j.svg;
+    $('url').textContent = j.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  });
+}
+
+// Tulisan akhir, tiap huruf muncul bergantian
+function letters(el, text, start, gap) {
+  [...text].forEach((c, n) => {
+    const s = document.createElement('i');
+    s.textContent = c === ' ' ? '\u00A0' : c;
+    s.style.animationDelay = start + n * gap + 's';
+    s.style.setProperty('--r', rand(-40, 40) + 'deg');
+    el.append(s);
+  });
+}
+letters($('l1'), 'Welcome new core team', .3, .03);
+letters($('l2'), 'GDGoC PENS', 1.1, .05);
+[...'GEN8'].forEach((c, n) => {
+  const s = document.createElement('i');
+  s.textContent = c;
+  const [hi, base, lo] = FOIL[n];
+  s.style.cssText = `--hi:${hi};--c:${base};--lo:${lo};--d:${2 + n * .28}s;--r:${rand(-30, 30)}deg;--t:${n % 2 ? 2.5 : -2.5}deg`;
+  $('l3').append(s);
+});
+$('l3').children[2].after(' ');
+
+// HP peserta tanpa backsound, hanya bunyi pop. Browser mengizinkan suara setelah layar disentuh.
+if (!isScreen) for (const type of ['pointerup', 'touchend', 'click']) addEventListener(type, () => music.unlock());
+
+// Pita, jejak tap, dan gelombang letusan
+const cv = $('ribbons'), g = cv.getContext('2d');
+let ribbons = [], puffs = [], rings = [], ring = null;
+function fit() {
+  const d = Math.min(devicePixelRatio || 1, 2);
+  W = innerWidth; H = innerHeight;
+  cv.width = W * d; cv.height = H * d;
+  g.setTransform(d, 0, 0, d, 0, 0);
+}
+addEventListener('resize', fit); fit();
+
+function puff(x, y, c) {
+  if (puffs.length > 160) return;
+  const t = $('knot').getBoundingClientRect();
+  puffs.push({ x0:x, y0:y, x1:t.left + t.width / 2, y1:t.top + t.height / 2, t:-rand(0, 8) | 0, d:rand(26, 40), c:COLORS[c], r:rand(1.5, 3.5) });
+}
+const density = () => Math.min(1, Math.max(.3, W * H / 2e6)); // layar kecil, pitanya lebih sedikit
+function ribbon(x, y, vx, vy) {
+  ribbons.push({ x, y, vx, vy, i:Math.random() * 4 | 0, w:rand(9, 20), n:rand(20, 46) | 0, t:[], ph:rand(0, 6.3), sp:rand(.06, .17), tw:rand(.16, .34) });
+}
+function burst(x, y, n, speed) {
+  for (let i = 0; i < n; i++) {
+    const a = rand(0, 6.3), s = rand(.25, 1) * speed;
+    ribbon(x, y, Math.cos(a) * s, Math.sin(a) * s);
+  }
+}
+function cannon(x, dir) {
+  for (let i = 0; i < 70 * density(); i++) {
+    const s = rand(.5, 1) * Math.max(W, H) / 42;
+    ribbon(x, H + 10, dir * s * rand(.25, .7), -s);
+  }
+}
+function step() {
+  for (const p of puffs) p.t++;
+  puffs = puffs.filter(p => p.t < p.d);
+  for (const r of rings) { r.r += 5; r.a -= .035; }
+  rings = rings.filter(r => r.a > 0);
+  if (ring) { ring.r += ring.v; ring.v *= .95; ring.a -= .035; if (ring.a <= 0) ring = null; }
+  if (popped && ribbons.length < 90 * density() && Math.random() < .3) ribbon(rand(0, W), -30, rand(-.5, .5), rand(1, 2.5));
+  for (const r of ribbons) {
+    r.vx *= .97; r.vy = r.vy * .97 + .12;
+    r.x += r.vx + Math.sin(r.ph += r.sp) * 2.4;
+    r.y += r.vy;
+    r.t.push([r.x, r.y]);
+    if (r.t.length > r.n) r.t.shift();
+  }
+  ribbons = ribbons.filter(r => r.t[0][1] < H + 60);
+}
+function draw() {
+  g.clearRect(0, 0, W, H);
+  // pita digambar sebagai lembaran yang lebarnya mengecil lalu terbalik, supaya terlihat memuntir
+  const sides = Array.from({ length: 8 }, () => new Path2D());
+  for (const r of ribbons) {
+    const t = r.t, last = t.length - 1;
+    let lx0, ly0, rx0, ry0;
+    t.forEach(([x, y], i) => {
+      if (i % 2 && i !== last) return; // cukup separuh titik, beban gambar turun setengah
+      const a = t[Math.max(i - 1, 0)], b = t[Math.min(i + 1, last)];
+      const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1;
+      const c = Math.cos(i * r.tw + r.ph), h = r.w / 2 * c;
+      const nx = -dy / len * h, ny = dx / len * h;
+      if (i) {
+        const s = sides[r.i + (c > 0 ? 0 : 4)];
+        s.moveTo(lx0, ly0); s.lineTo(x + nx, y + ny); s.lineTo(x - nx, y - ny); s.lineTo(rx0, ry0); s.closePath();
+      }
+      lx0 = x + nx; ly0 = y + ny; rx0 = x - nx; ry0 = y - ny;
+    });
+  }
+  sides.forEach((s, i) => { g.fillStyle = (i < 4 ? COLORS : LIGHT)[i % 4]; g.fill(s); });
+  for (const p of puffs) {
+    if (p.t < 0) continue;
+    const e = p.t / p.d;
+    g.globalAlpha = .9 * (1 - e * e);
+    g.fillStyle = p.c;
+    g.beginPath();
+    g.arc(p.x0 + (p.x1 - p.x0) * e, p.y0 + (p.y1 - p.y0) * e, p.r, 0, 6.3);
+    g.fill();
+  }
+  g.lineWidth = 2;
+  for (const r of rings) {
+    g.globalAlpha = r.a;
+    g.strokeStyle = r.c;
+    g.beginPath(); g.arc(r.x, r.y, r.r, 0, 6.3); g.stroke();
+  }
+  if (ring) {
+    g.globalAlpha = Math.max(ring.a, 0);
+    g.strokeStyle = '#fff'; g.lineWidth = 14 * ring.a + 1;
+    g.beginPath(); g.arc(ring.x, ring.y, ring.r, 0, 6.3); g.stroke();
+  }
+  g.globalAlpha = 1;
+}
+let last, acc = 0;
+function loop(now) {
+  acc = Math.min(acc + now - (last ?? now), 100); last = now;
+  for (; acc >= 16.67; acc -= 16.67) step(); // langkah tetap, supaya kecepatan sama di layar 60Hz maupun 120Hz
+  draw();
+  requestAnimationFrame(loop);
+}
+if (!calm) requestAnimationFrame(loop);
+
+function pop() {
+  if (popped) return;
+  popped = true;
+  const b = $('grow').getBoundingClientRect();
+  const x = b.left + b.width / 2, y = b.top + b.height * .4;
+  document.body.classList.add('popped');
+  $('msg').focus();
+  if (isScreen) { music.pop(); timers.push(setTimeout(music.crash, 3100)); } else music.boom(6000);
+  if (calm) return;
+  $('flash').animate([{ opacity:.95 }, { opacity:0 }], 380);
+  ring = { x, y, r:40, v:Math.max(W, H) / 34, a:1 };
+  burst(x, y, 260 * density(), Math.max(W, H) / 30);
+  timers.push(setTimeout(() => { cannon(0, 1); cannon(W, -1); }, 3100));
+}
+
+// Backsound, dibuat langsung oleh browser, hanya berbunyi di layar proyektor.
+// Tiap 1% ada nada naik dan tempo bertambah, tiap 10% lapisan baru masuk, tiap 25% nada dasar naik.
+let actx, master, bus, echo, noiseBuf;
+const LOOKAHEAD = .5; // not dijadwalkan 0,5 detik ke depan, supaya musik tidak tersendat saat animasi berat
+const CHORDS = [[57, 60, 64], [53, 57, 60], [60, 64, 67], [55, 59, 62]]; // Am F C G
+const BASS = [33, 29, 36, 31];
+const STAB = new Set([0, 3, 6, 10, 12]);
+const _ = 0;
+const HOOK = [
+  76,_,76,_,79,_,76,_,_,_,74,_,72,_,_,_,
+  72,_,72,_,77,_,72,_,_,_,69,_,72,_,_,_,
+  76,_,76,_,79,_,84,_,_,_,79,_,76,_,_,_,
+  74,_,74,_,79,_,83,_,_,_,79,_,74,_,71,_,
+];
+const PENTA = [0, 2, 4, 7, 9];
+const hz = m => 440 * 2 ** ((m - 69) / 12);
+
+const music = {
+  mode:'lobby', p:0, pct:0, step:0, next:0, muted:false,
+  begin() {
+    if (actx) { if (actx.state !== 'running') actx.resume(); return; }
+    music.init();
+    music.next = actx.currentTime + .08;
+    setInterval(music.schedule, 25);
+    music.show();
+  },
+  unlock() {
+    if (!actx) music.init(); else if (actx.state !== 'running') actx.resume();
+  },
+  init() {
+    actx = new AudioContext();
+    actx.onstatechange = music.show;
+    master = actx.createGain(); master.gain.value = .85;
+    const limiter = actx.createDynamicsCompressor();
+    limiter.threshold.value = -8; limiter.ratio.value = 12;
+    master.connect(limiter).connect(actx.destination);
+    music.newBus();
+    noiseBuf = actx.createBuffer(1, actx.sampleRate * 2, actx.sampleRate);
+    noiseBuf.getChannelData(0).forEach((_, i, d) => { d[i] = Math.random() * 2 - 1; });
+    if (actx.state !== 'running') actx.resume();
+  },
+  // Jalur baru membuang not yang sudah terjadwal, supaya jeda setelah letusan benar-benar hening
+  newBus() {
+    bus?.disconnect();
+    bus = actx.createGain();
+    bus.connect(master);
+    echo = actx.createDelay(1); echo.delayTime.value = .19;
+    const fb = actx.createGain(); fb.gain.value = .36;
+    echo.connect(fb).connect(echo); fb.connect(bus);
+  },
+  mute(on) { music.muted = on; master.gain.value = on ? 0 : .85; music.show(); },
+  show() {
+    const off = actx?.state !== 'running';
+    $('sound').classList.toggle('off', off || music.muted);
+    $('soundText').textContent = off ? 'Klik untuk menyalakan musik' : music.muted ? 'Musik dimatikan' : '';
+  },
+  update(phase, p) {
+    const pct = Math.floor(p * 100);
+    if (actx && phase === 'play' && pct > music.pct) {
+      const n = Math.min(pct - music.pct, 4); // kalau tap sangat cepat, cukup bunyikan 4 nada terakhir
+      for (let i = 0; i < n; i++) music.pluck(pct - n + 1 + i, actx.currentTime + .01 + i * .05);
+    }
+    music.pct = phase === 'play' ? pct : 0;
+    music.mode = phase; music.p = p;
+  },
+  pluck(pct, t) { // nada tiap 1%, naik bertahap dari rendah ke tinggi
+    const i = Math.floor(pct / 7) + pct % 4;
+    const note = 48 + 12 * Math.floor(i / 5) + PENTA[i % 5] + Math.floor(pct / 25);
+    music.tone('triangle', hz(note), t, .24, .2, 7000);
+    music.tone('sine', hz(note + 12), t, .18, .1, 9000, echo);
+  },
+  bpm() { return music.mode === 'lobby' ? 112 : music.mode === 'done' ? 128 : 116 + 34 * music.p; },
+  schedule() {
+    if (music.next < actx.currentTime) music.next = actx.currentTime + .02; // laptop sempat tersendat, jangan menumpuk not yang sudah lewat
+    while (music.next < actx.currentTime + LOOKAHEAD) {
+      music.play(music.step, music.next);
+      music.next += 60 / music.bpm() / 4;
+      music.step++;
+    }
+  },
+  tone(type, f, t, dur, vol, cutoff, dest = bus) {
+    const o = actx.createOscillator(), e = actx.createGain(), lp = actx.createBiquadFilter();
+    o.type = type; o.frequency.value = f;
+    lp.type = 'lowpass'; lp.frequency.value = cutoff;
+    e.gain.setValueAtTime(0, t);
+    e.gain.linearRampToValueAtTime(vol, t + .006);
+    e.gain.exponentialRampToValueAtTime(.0008, t + dur);
+    o.connect(lp).connect(e).connect(dest);
+    o.start(t); o.stop(t + dur + .02);
+  },
+  noise(t, dur, vol, type, f, dest = bus) {
+    const s = actx.createBufferSource(), e = actx.createGain(), fl = actx.createBiquadFilter();
+    s.buffer = noiseBuf; fl.type = type; fl.frequency.value = f;
+    e.gain.setValueAtTime(vol, t);
+    e.gain.exponentialRampToValueAtTime(.0008, t + dur);
+    s.connect(fl).connect(e).connect(dest);
+    s.start(t, Math.random()); s.stop(t + dur + .02);
+  },
+  kick(t, vol = .9, dest = bus) {
+    const o = actx.createOscillator(), e = actx.createGain();
+    o.frequency.setValueAtTime(155, t);
+    o.frequency.exponentialRampToValueAtTime(46, t + .11);
+    e.gain.setValueAtTime(vol, t);
+    e.gain.exponentialRampToValueAtTime(.001, t + .24);
+    o.connect(e).connect(dest);
+    o.start(t); o.stop(t + .26);
+  },
+  play(n, t) {
+    // T = tingkat musik. -1 lobby, 0 sampai 9 naik tiap 10%, 99 setelah meletus
+    const T = music.mode === 'lobby' ? -1 : music.mode === 'done' ? 99 : Math.min(Math.floor(music.p * 10), 9);
+    const key = music.mode === 'play' ? Math.floor(music.p * 4) : 0;
+    const s = n % 16, bar = (n >> 4) % 4, chord = CHORDS[bar].map(m => m + key), root = BASS[bar] + key;
+    const open = T === 99 ? 1 : T < 0 ? .3 : .12 + .88 * music.p;
+    const cutoff = 500 + 4200 * open;
+
+    if (s % 4 === 0) music.kick(t, T < 0 ? .5 : .9);
+    if (T === 9 && s % 4 === 2) music.kick(t, .7);
+    if (T >= 1 && s % 8 === 4) music.noise(t, .16, .38, 'bandpass', 1700);
+    if ((T < 0 || T >= 2) && s % 4 === 2) music.noise(t, .09, T < 0 ? .16 : .22, 'highpass', 8000);
+    if (T >= 4 && s % 2 === 1) music.noise(t, .035, .09, 'highpass', 9500);
+    if (s % 4 >= 2) music.tone('sawtooth', hz(root + 12), t, .13, T < 0 ? .26 : .3, 650);
+    if (T >= 6 && s % 4 >= 2) music.tone('square', hz(root + 24), t, .11, .08, 1600);
+    if ((T < 0 || T >= 3) && STAB.has(s)) for (const m of chord) music.tone('sawtooth', hz(m), t, .2, T < 0 ? .09 : .085, cutoff);
+    if (T >= 5) music.tone('square', hz(chord[n % 3] + 12 + (n % 6 > 2 ? 12 : 0) + (T >= 7 && T < 99 ? 12 : 0)), t, .1, .05, 3800, echo);
+    if (T >= 8 && T < 99) music.noise(t, .07, .1 + .3 * music.p, 'bandpass', 900 + 3000 * music.p);
+    const note = T === 99 && HOOK[n % 64];
+    if (note) {
+      music.tone('sawtooth', hz(note), t, .34, .13, 3600, echo);
+      music.tone('square', hz(note), t, .3, .07, 5000);
+    }
+  },
+  crash(t = actx?.currentTime) {
+    if (actx) music.noise(t, 1.5, .55, 'highpass', 4500, master);
+  },
+  boom(bright) { // bunyi letusan, sekitar seperempat detik
+    if (!actx) return;
+    music.noise(actx.currentTime, .24, 1, 'lowpass', bright, master);
+    music.kick(actx.currentTime, 1, master);
+  },
+  pop() {
+    if (!actx) return;
+    const t = actx.currentTime;
+    music.newBus();
+    music.boom(3200);
+    music.step = 0;
+    music.next = t + .5; // jeda hening sebentar setelah letusan, lalu musik penuh masuk
+    music.crash(t + .5);
+  },
+};
+
+connect();
+</script>
+</body>
+</html>
