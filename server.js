@@ -10,8 +10,8 @@ const PORT = process.env.PORT || 3000;
 const HOST_KEY = process.env.HOST_KEY || crypto.randomBytes(4).toString('hex');
 
 // Angka yang bisa disetel saat gladi
-const TAPS_PER_PERSON = 80; // target = jumlah orang saat Mulai x angka ini, 80 kira-kira 20 detik tap
-const MIN_TARGET = 80;
+const TAPS_PER_PERSON = 720; // target = jumlah orang saat Mulai x angka ini. 720 = 3 tap/detik x 240 detik, kira-kira 4 menit
+const MIN_TARGET = 200;
 const MAX_TAPS_PER_SEC = 20; // lebih cepat dari jari manusia, membatasi script auto-tap
 const MAX_CONNECTIONS = 300;
 
@@ -90,6 +90,8 @@ wss.on('connection', (ws, req) => {
   ws.windowStart = 0;
   ws.count = 0;
   ws.color = nextColor++ % 4;
+  // ponytail: yang telat masuk menambah target, yang keluar tidak mengurangi supaya balon tidak tiba-tiba pecah
+  if (!ws.isHost && phase === 'play') target += TAPS_PER_PERSON;
   ws.on('pong', () => { ws.alive = true; });
   ws.on('close', () => { dirty = true; });
   ws.on('message', data => ws.isHost ? hostCommand(data.toString()) : playerTap(ws));

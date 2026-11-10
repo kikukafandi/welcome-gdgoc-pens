@@ -33,7 +33,14 @@ const open = url => new Promise((res, rej) => { const w = new WebSocket(url); w.
     host.send('start');
     await sleep(150);
     assert.equal(s.phase, 'play');
-    assert.equal(s.target, 4000);
+    assert.equal(s.target, 36000);
+
+    const late = await open(URL);
+    await sleep(150);
+    assert.equal(s.target, 36720, 'peserta telat menambah target');
+    late.close();
+    await sleep(150);
+    assert.equal(s.target, 36720, 'peserta keluar tidak mengurangi target');
 
     for (let i = 0; i < 100; i++) phones[0].send('t');
     await sleep(150);
