@@ -46,6 +46,7 @@ const open = url => new Promise((res, rej) => { const w = new WebSocket(url); w.
     }
     assert.equal(s.phase, 'done');
     assert.equal(s.taps, s.target, 'tap berhenti tepat di target');
+    assert.equal(s.teams.reduce((a, b) => a + b), s.taps, 'total tap empat tim sama dengan total tap');
 
     phones[0].send('reset');
     await sleep(150);
@@ -55,6 +56,7 @@ const open = url => new Promise((res, rej) => { const w = new WebSocket(url); w.
     await sleep(150);
     assert.equal(s.phase, 'lobby');
     assert.equal(s.taps, 0);
+    assert.deepEqual(s.teams, [0, 0, 0, 0], 'skor tim kembali nol');
 
     console.log('OK, 50 HP tersambung, tap terhitung, kontrol host aman');
     [host, ...phones].forEach(w => w.close());

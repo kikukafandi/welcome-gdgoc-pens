@@ -16,7 +16,7 @@ const MAX_TAPS_PER_SEC = 20; // lebih cepat dari jari manusia, membatasi script 
 const MAX_CONNECTIONS = 300;
 
 // ponytail: satu acara, satu ruangan, state di memori. Server restart = mulai dari lobby lagi.
-let phase = 'lobby', taps = 0, target = 0, delta = [0, 0, 0, 0], dirty = true, nextColor = 0;
+let phase = 'lobby', taps = 0, target = 0, delta = [0, 0, 0, 0], teams = [0, 0, 0, 0], dirty = true, nextColor = 0;
 
 function lanAddress() {
   const nics = Object.entries(os.networkInterfaces())
@@ -62,7 +62,7 @@ function hostCommand(cmd) {
   } else if (cmd === 'pop' && phase === 'play') {
     phase = 'done';
   } else if (cmd === 'reset') {
-    phase = 'lobby'; taps = 0; target = 0; delta = [0, 0, 0, 0];
+    phase = 'lobby'; taps = 0; target = 0; delta = [0, 0, 0, 0]; teams = [0, 0, 0, 0];
   }
   dirty = true;
 }
@@ -74,6 +74,7 @@ function playerTap(ws) {
   if (++ws.count > MAX_TAPS_PER_SEC) return;
   taps++;
   delta[ws.color]++;
+  teams[ws.color]++;
   dirty = true;
   if (taps >= target) phase = 'done';
 }
@@ -100,7 +101,7 @@ wss.on('connection', (ws, req) => {
 // Kirim state 20x per detik, bukan per tap, supaya beban tetap rata walau semua tap bersamaan
 setInterval(() => {
   if (!dirty) return;
-  const msg = JSON.stringify({ phase, taps, target, players: players(), delta });
+  const msg = JSON.stringify({ phase, taps, target, players: players(), delta, teams });
   for (const c of wss.clients) if (c.readyState === c.OPEN) c.send(msg);
   delta = [0, 0, 0, 0];
   dirty = false;
